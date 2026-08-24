@@ -1,0 +1,14 @@
+{
+  "name": "Folio Web Reader",
+  "short_name": "Folio Web",
+  "description": "Read-only viewer for a shared Folio library, styled to match each performer's own theme.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#14161a",
+  "theme_color": "#14161a",
+  "icons": [
+    { "src": "logo/FolioLogo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

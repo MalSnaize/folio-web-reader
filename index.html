@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Folio Web Reader</title>
+<link rel="icon" href="logo/Folio.ico" />
+<link rel="apple-touch-icon" href="logo/FolioLogo.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#14161a" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="library-view" class="view active">
+  <header class="library-header">
+    <img class="brand-icon" src="logo/FolioLogo.png" alt="" />
+    <h1>Folio Web Reader</h1>
+    <button id="choose-folder-btn" class="btn">Choose Library Folder</button>
+  </header>
+
+  <div id="folder-path" class="folder-path"></div>
+
+  <div id="reconnect-banner" class="reconnect-banner hidden">
+    <span>Access to your last folder needs to be reconfirmed.</span>
+    <button id="reconnect-btn" class="btn">Reconnect</button>
+  </div>
+
+  <div id="library-status" class="library-status">Choose your Folio Library folder to get started — the same shared folder the desktop app points at.</div>
+
+  <div id="library-body" class="library-body hidden">
+    <nav id="performer-tabs" class="performer-tabs"></nav>
+    <ul id="song-list" class="song-list"></ul>
+
+    <div class="sets-section">
+      <h2>Sets</h2>
+      <ul id="set-list" class="set-list"></ul>
+    </div>
+  </div>
+</div>
+
+<div id="viewer-view" class="view">
+  <div id="song-content-wrap" class="song-content-wrap">
+    <div id="song-content" class="song-content"></div>
+  </div>
+
+  <div id="viewer-hud" class="viewer-hud">
+    <span id="viewer-title" class="viewer-title"></span>
+    <span id="viewer-position" class="viewer-position"></span>
+  </div>
+
+  <button id="viewer-close-btn" class="viewer-close-btn" aria-label="Close">&#10005;</button>
+  <button id="viewer-prev-btn" class="viewer-nav-btn viewer-prev-btn hidden" aria-label="Previous song">&#8249;</button>
+  <button id="viewer-next-btn" class="viewer-nav-btn viewer-next-btn hidden" aria-label="Next song">&#8250;</button>
+
+  <div id="viewer-loading" class="viewer-loading hidden">Loading&#8230;</div>
+</div>
+
+<style id="theme-style"></style>
+
+<script src="lib/mammoth/mammoth.browser.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
