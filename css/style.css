@@ -191,19 +191,23 @@ html, body {
   z-index: 100;
 }
 
+/* No scrolling here on purpose — content is paginated into fixed-size columns by
+   layoutPages() in app.js, and turned a page at a time via buttons/tap-zones/swipe/keys,
+   the same as the PDF reader's canvas pages rather than a scrolling document. */
 .song-content-wrap {
   width: 100%;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   padding: env(safe-area-inset-top) 0 calc(48px + env(safe-area-inset-bottom));
 }
 
 .song-content {
   max-width: 760px;
+  width: 100%;
   margin: 0 auto;
   background: #fff;
   color: #111;
-  min-height: 100%;
+  transition: transform 0.25s ease;
 }
 
 .viewer-error {
@@ -268,6 +272,20 @@ html, body {
 
 .viewer-prev-btn { left: 8px; border-radius: 8px 20px 20px 8px; }
 .viewer-next-btn { right: 8px; border-radius: 20px 8px 8px 20px; }
+
+/* Full-height invisible strips for a thumb-friendly swipe/tap page-turn on mobile,
+   sitting behind the close/nav buttons (z-index 1 < 2) so those stay clickable where
+   they overlap. */
+.viewer-tap-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  z-index: 1;
+}
+
+.viewer-tap-prev { left: 0; }
+.viewer-tap-next { right: 0; }
 
 .viewer-loading {
   position: absolute;

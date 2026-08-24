@@ -1,4 +1,4 @@
-const CACHE_VERSION = "folio-web-reader-v1";
+const CACHE_VERSION = "folio-web-reader-v2";
 
 const PRECACHE_URLS = [
   "./",

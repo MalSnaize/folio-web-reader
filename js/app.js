@@ -23,6 +23,8 @@ const viewerPositionEl = document.getElementById("viewer-position");
 const closeBtn = document.getElementById("viewer-close-btn");
 const prevBtn = document.getElementById("viewer-prev-btn");
 const nextBtn = document.getElementById("viewer-next-btn");
+const tapPrev = document.getElementById("viewer-tap-prev");
+const tapNext = document.getElementById("viewer-tap-next");
 const loadingEl = document.getElementById("viewer-loading");
 const hud = document.getElementById("viewer-hud");
 
@@ -31,6 +33,13 @@ let selectedPerformerId = null;
 let queue = []; // [{ song, performerEntry }]
 let queueIndex = 0;
 let pendingHandle = null;
+
+// Pagination within the currently open song — see layoutPages(). Content is laid out as
+// CSS columns exactly one viewport-width wide, and paging just translates that column
+// strip sideways inside the clipped wrap, the same trick a lot of web e-readers use.
+let pageIndex = 0;
+let pageCount = 1;
+let pageWidth = 0;
 
 // ---------- IndexedDB (stores the last-picked directory handle) ----------
 
@@ -235,40 +244,79 @@ async function openCurrentSong() {
   if (!item) return;
 
   viewerTitleEl.textContent = `${item.song.title}${item.song.artist ? " — " + item.song.artist : ""}`;
-  viewerPositionEl.textContent = queue.length > 1 ? `${queueIndex + 1} / ${queue.length}` : "";
-  prevBtn.classList.toggle("hidden", queue.length <= 1);
-  nextBtn.classList.toggle("hidden", queue.length <= 1);
-  prevBtn.disabled = queueIndex === 0;
-  nextBtn.disabled = queueIndex === queue.length - 1;
 
   loadingEl.textContent = "Loading…";
   loadingEl.classList.remove("hidden");
   songContentEl.innerHTML = "";
-  contentWrapEl.scrollTop = 0;
+  songContentEl.style.transform = "translateX(0)";
 
   themeStyleEl.textContent = buildThemeCss(item.performerEntry.themeStore, "#song-content");
 
   try {
     songContentEl.innerHTML = await renderSongHtml(item.performerEntry, item.song);
+    layoutPages();
   } catch (err) {
     console.error(err);
     songContentEl.innerHTML = `<p class="viewer-error">Could not open "${escapeHtml(item.song.title)}" — its file may be missing or still syncing.</p>`;
+    pageCount = 1;
   }
 
+  pageIndex = 0;
+  goToPage(0);
   loadingEl.classList.add("hidden");
   resetHudTimer();
 }
 
-function nextSong() {
-  if (queueIndex < queue.length - 1) {
+// Lays the just-rendered song out as fixed-width, fixed-height CSS columns — one column
+// per "page". #song-content's own box stays exactly one column wide (its normal CSS
+// width), while the columns it generates overflow sideways beyond that box; the wrap
+// around it clips that overflow (overflow: hidden), so only whichever column is scrolled
+// into view via transform: translateX() is ever visible. Needs a real column-height, or
+// the browser just makes one very tall column instead of paginating at all.
+function layoutPages() {
+  pageWidth = songContentEl.clientWidth;
+  const wrapHeight = contentWrapEl.clientHeight;
+  songContentEl.style.height = `${wrapHeight}px`;
+  songContentEl.style.columnWidth = `${pageWidth}px`;
+  songContentEl.style.columnGap = "0px";
+  songContentEl.style.columnFill = "auto";
+
+  const totalWidth = songContentEl.scrollWidth;
+  pageCount = pageWidth > 0 ? Math.max(1, Math.round(totalWidth / pageWidth)) : 1;
+}
+
+function goToPage(index) {
+  pageIndex = Math.min(Math.max(index, 0), pageCount - 1);
+  songContentEl.style.transform = `translateX(-${pageIndex * pageWidth}px)`;
+  updateViewerHud();
+}
+
+function updateViewerHud() {
+  const songPart = queue.length > 1 ? `Song ${queueIndex + 1}/${queue.length}` : "";
+  const pagePart = pageCount > 1 ? `Page ${pageIndex + 1}/${pageCount}` : "";
+  viewerPositionEl.textContent = [songPart, pagePart].filter(Boolean).join(" · ");
+
+  const showNav = queue.length > 1 || pageCount > 1;
+  prevBtn.classList.toggle("hidden", !showNav);
+  nextBtn.classList.toggle("hidden", !showNav);
+  prevBtn.disabled = pageIndex === 0 && queueIndex === 0;
+  nextBtn.disabled = pageIndex === pageCount - 1 && queueIndex === queue.length - 1;
+}
+
+// Page-turn first; only crosses into the next/previous song once you're already at that
+// song's last/first page — same as flipping through a printed set list.
+function nextPage() {
+  if (pageIndex < pageCount - 1) goToPage(pageIndex + 1);
+  else if (queueIndex < queue.length - 1) {
     queueIndex++;
     openCurrentSong();
   }
   resetHudTimer();
 }
 
-function prevSong() {
-  if (queueIndex > 0) {
+function prevPage() {
+  if (pageIndex > 0) goToPage(pageIndex - 1);
+  else if (queueIndex > 0) {
     queueIndex--;
     openCurrentSong();
   }
@@ -293,21 +341,26 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 closeBtn.addEventListener("click", closeViewer);
-prevBtn.addEventListener("click", prevSong);
-nextBtn.addEventListener("click", nextSong);
+prevBtn.addEventListener("click", prevPage);
+nextBtn.addEventListener("click", nextPage);
+tapPrev.addEventListener("click", prevPage);
+tapNext.addEventListener("click", nextPage);
 
 document.addEventListener("keydown", (e) => {
   if (!viewerView.classList.contains("active")) return;
   switch (e.key) {
     case "ArrowRight":
+    case "ArrowDown":
     case "PageDown":
+    case " ":
       e.preventDefault();
-      nextSong();
+      nextPage();
       break;
     case "ArrowLeft":
+    case "ArrowUp":
     case "PageUp":
       e.preventDefault();
-      prevSong();
+      prevPage();
       break;
     case "Escape":
       closeViewer();
@@ -327,9 +380,18 @@ viewerView.addEventListener("touchend", (e) => {
   const dx = t.clientX - touchStartX;
   const dy = t.clientY - touchStartY;
   if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-    if (dx < 0) nextSong();
-    else prevSong();
+    if (dx < 0) nextPage();
+    else prevPage();
   }
+});
+
+// Recompute the column layout on resize/orientation-change (e.g. a phone rotating, or an
+// on-screen keyboard changing viewport height) and re-clamp to the nearest valid page.
+window.addEventListener("resize", () => {
+  if (!viewerView.classList.contains("active") || !songContentEl.innerHTML) return;
+  const previousIndex = pageIndex;
+  layoutPages();
+  goToPage(previousIndex);
 });
 
 let hudTimer = null;
